@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/DataDog/dd-trace-go/tracer"
 	"github.com/DataDog/dd-trace-go/tracer/tracertest"
@@ -14,7 +13,7 @@ import (
 const debug = false
 
 func TestClient(t *testing.T) {
-	opts := &redis.Options{Addr: "127.0.0.1:6379"}
+	opts := &redis.Options{Addr: "127.0.0.1:7006"}
 	assert := assert.New(t)
 	testTracer, testTransport := tracertest.GetTestTracer()
 	testTracer.SetDebugLogging(debug)
@@ -32,58 +31,13 @@ func TestClient(t *testing.T) {
 	assert.Equal(span.Service, "my-redis")
 	assert.Equal(span.Name, "redis.command")
 	assert.Equal(span.GetMeta("out.host"), "127.0.0.1")
-	assert.Equal(span.GetMeta("out.port"), "6379")
+	assert.Equal(span.GetMeta("out.port"), "7006")
 	assert.Equal(span.GetMeta("redis.raw_command"), "set test_key test_value: ")
 	assert.Equal(span.GetMeta("redis.args_length"), "3")
 }
 
-func TestPipeline(t *testing.T) {
-	opts := &redis.Options{Addr: "127.0.0.1:6379"}
-	assert := assert.New(t)
-	testTracer, testTransport := tracertest.GetTestTracer()
-	testTracer.SetDebugLogging(debug)
-
-	client := NewClientWithServiceName(opts, "my-redis", testTracer)
-	pipeline := client.Pipeline()
-	pipeline.Expire("pipeline_counter", time.Hour)
-
-	// Exec with context test
-	pipeline.ExecWithContext(context.Background())
-
-	testTracer.ForceFlush()
-	traces := testTransport.Traces()
-	assert.Len(traces, 1)
-	spans := traces[0]
-	assert.Len(spans, 1)
-
-	span := spans[0]
-	assert.Equal(span.Service, "my-redis")
-	assert.Equal(span.Name, "redis.command")
-	assert.Equal(span.GetMeta("out.port"), "6379")
-	assert.Equal(span.GetMeta("redis.pipeline_length"), "1")
-	assert.Equal(span.Resource, "expire pipeline_counter 3600: false\n")
-
-	pipeline.Expire("pipeline_counter", time.Hour)
-	pipeline.Expire("pipeline_counter_1", time.Minute)
-
-	// Rewriting Exec
-	pipeline.Exec()
-
-	testTracer.ForceFlush()
-	traces = testTransport.Traces()
-	assert.Len(traces, 1)
-	spans = traces[0]
-	assert.Len(spans, 1)
-
-	span = spans[0]
-	assert.Equal(span.Service, "my-redis")
-	assert.Equal(span.Name, "redis.command")
-	assert.Equal(span.GetMeta("redis.pipeline_length"), "2")
-	assert.Equal(span.Resource, "expire pipeline_counter 3600: false\nexpire pipeline_counter_1 60: false\n")
-}
-
 func TestChildSpan(t *testing.T) {
-	opts := &redis.Options{Addr: "127.0.0.1:6379"}
+	opts := &redis.Options{Addr: "127.0.0.1:7006"}
 	assert := assert.New(t)
 	testTracer, testTransport := tracertest.GetTestTracer()
 	testTracer.SetDebugLogging(debug)
@@ -120,11 +74,11 @@ func TestChildSpan(t *testing.T) {
 
 	assert.Equal(child_span.ParentID, pspan.SpanID)
 	assert.Equal(child_span.GetMeta("out.host"), "127.0.0.1")
-	assert.Equal(child_span.GetMeta("out.port"), "6379")
+	assert.Equal(child_span.GetMeta("out.port"), "7006")
 }
 
 func TestMultipleCommands(t *testing.T) {
-	opts := &redis.Options{Addr: "127.0.0.1:6379"}
+	opts := &redis.Options{Addr: "127.0.0.1:7006"}
 	assert := assert.New(t)
 	testTracer, testTransport := tracertest.GetTestTracer()
 	testTracer.SetDebugLogging(debug)
@@ -153,7 +107,7 @@ func TestMultipleCommands(t *testing.T) {
 }
 
 func TestError(t *testing.T) {
-	opts := &redis.Options{Addr: "127.0.0.1:6379"}
+	opts := &redis.Options{Addr: "127.0.0.1:7006"}
 	assert := assert.New(t)
 	testTracer, testTransport := tracertest.GetTestTracer()
 	testTracer.SetDebugLogging(debug)
@@ -172,6 +126,6 @@ func TestError(t *testing.T) {
 	assert.Equal(span.GetMeta("error.msg"), err.Err().Error())
 	assert.Equal(span.Name, "redis.command")
 	assert.Equal(span.GetMeta("out.host"), "127.0.0.1")
-	assert.Equal(span.GetMeta("out.port"), "6379")
+	assert.Equal(span.GetMeta("out.port"), "7006")
 	assert.Equal(span.GetMeta("redis.raw_command"), "get non_existent_key: ")
 }
