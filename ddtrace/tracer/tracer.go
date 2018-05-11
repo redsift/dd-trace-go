@@ -343,9 +343,33 @@ func (t *tracer) forceFlush() {
 	<-done
 }
 
+// runPipeline runs the processing pipeline on the given trace. If it returns
+// false, the trace must be dropped.
+func (t *tracer) runPipeline(trace []*span) bool {
+	fns := t.config.processFuncs
+	if len(fns) == 0 {
+		return true
+	}
+	for _, fn := range fns {
+		for i, s := range trace {
+			stop, drop := fn(s, newSpanInspector(s), i, len(trace))
+			if drop {
+				return false
+			}
+			if stop {
+				break
+			}
+		}
+	}
+	return true
+}
+
 // pushPayload pushes the trace onto the payload. If the payload becomes
 // larger than the threshold as a result, it sends a flush request.
 func (t *tracer) pushPayload(trace []*span) {
+	if ok := t.runPipeline(trace); !ok {
+		return
+	}
 	if err := t.payload.push(trace); err != nil {
 		t.pushError(&traceEncodingError{context: err})
 	}

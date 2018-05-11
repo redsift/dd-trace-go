@@ -682,6 +682,7 @@ func TestWorker(t *testing.T) {
 
 func newTracerChannels() *tracer {
 	return &tracer{
+		config:         &config{},
 		payload:        newPayload(),
 		payloadQueue:   make(chan []*span, payloadQueueSize),
 		errorBuffer:    make(chan error, errorBufferSize),

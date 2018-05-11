@@ -33,6 +33,9 @@ type config struct {
 
 	// propagator propagates span context cross-process
 	propagator Propagator
+
+	// processFuncs holds zero or more functions that are called in the processing pipeline.
+	processFuncs []ddtrace.ProcessFunc
 }
 
 // StartOption represents a function that can be provided as a parameter to Start.
@@ -49,6 +52,16 @@ func defaults(c *config) {
 func WithDebugMode(enabled bool) StartOption {
 	return func(c *config) {
 		c.debug = enabled
+	}
+}
+
+// WithPipeline creates a processing pipeline with the given set of ProcessFunc.
+// They will be called in the given order, as a chain, as soon as a trace completes
+// and before it is added to the payload. A ProcessFunc is able to alter spans in
+// a trace or decide whether a trace will be kept or dropped.
+func WithPipeline(fns ...ddtrace.ProcessFunc) StartOption {
+	return func(c *config) {
+		c.processFuncs = fns
 	}
 }
 

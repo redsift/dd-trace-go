@@ -55,6 +55,16 @@ type Span interface {
 	Context() SpanContext
 }
 
+// A SpanInspector allows inspecting of a span's properties. It is
+// used in the processing pipeline to investigate a trace's spans.
+type SpanInspector interface {
+	// OperationName returns the operation name of this span.
+	OperationName() string
+
+	// Tag returns the tag value at the given key.
+	Tag(key string) interface{}
+}
+
 // SpanContext represents a span state that can propagate to descendant spans
 // and across process boundaries. It contains all the information needed to
 // spawn a direct descendant of the span that it belongs to. It can be used
@@ -65,6 +75,13 @@ type SpanContext interface {
 	// false.
 	ForeachBaggageItem(handler func(k, v string) bool)
 }
+
+// ProcessFunc is used to transform or drop traces before they are encoded. It is called
+// during the processing pipeline by receiving each span of the finished trace, along with
+// a SpanInspector, the index of the span and the total number of spans in the trace. It
+// has to return two boolean values: if stop is true, the iteration stops; if drop is true,
+// the pipeline ends and the trace is dropped.
+type ProcessFunc func(span Span, inspect SpanInspector, index, total int) (stop, drop bool)
 
 // StartSpanOption is a configuration option that can be used with a Tracer's StartSpan method.
 type StartSpanOption func(cfg *StartSpanConfig)

@@ -40,6 +40,32 @@ type span struct {
 	context *spanContext
 }
 
+func newSpanInspector(s ddtrace.Span) ddtrace.SpanInspector {
+	span, ok := s.(*span)
+	if !ok {
+		return &spanInspector{}
+	}
+	return &spanInspector{span}
+}
+
+var _ ddtrace.SpanInspector = (*spanInspector)(nil)
+
+type spanInspector struct{ *span }
+
+func (i spanInspector) Tag(k string) interface{} {
+	if i.span == nil {
+		return ""
+	}
+	return i.span.Meta[k]
+}
+
+func (i spanInspector) OperationName() string {
+	if i.span == nil {
+		return ""
+	}
+	return i.span.Name
+}
+
 // Context yields the SpanContext for this Span. Note that the return
 // value of Context() is still valid after a call to Finish(). This is
 // called the span context and it is different from Go's context.
@@ -49,6 +75,11 @@ func (s *span) Context() ddtrace.SpanContext { return s.context }
 // are propagated down to descendant spans and injected cross-process. Use with
 // care as it adds extra load onto your tracing layer.
 func (s *span) SetBaggageItem(key, val string) {
+	s.Lock()
+	defer s.Unlock()
+	if s.finished {
+		return
+	}
 	s.context.setBaggageItem(key, val)
 }
 
@@ -162,7 +193,9 @@ func (s *span) Finish(opts ...ddtrace.FinishOption) {
 func (s *span) SetOperationName(operationName string) {
 	s.Lock()
 	defer s.Unlock()
-
+	if s.finished {
+		return
+	}
 	s.Name = operationName
 }
 
