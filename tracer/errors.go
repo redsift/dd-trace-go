@@ -1,7 +1,7 @@
 package tracer
 
 import (
-	"log"
+	//"log"
 	"strconv"
 )
 
@@ -152,6 +152,7 @@ func logErrors(errChan <-chan error) {
 		if v.Count > 1 {
 			repeat = " (repeated " + strconv.Itoa(v.Count) + " times)"
 		}
-		log.Println(errorPrefix + v.Example + repeat)
+		_ = repeat
+		//log.Println(errorPrefix + v.Example + repeat)
 	}
 }
